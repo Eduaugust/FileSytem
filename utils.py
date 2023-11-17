@@ -1,9 +1,6 @@
-from operator import index
+from io import TextIOWrapper
 import time
 from typing import List
-
-from numpy import False_
-
 from iNode import *
 
 FILE = 'sistema.txt'
@@ -24,352 +21,340 @@ QTD_BLOCOS = int(536870912/8965)
 # Medindo qual a diferença de espaço tem somando tudo e com 256Mb
 # print(ESPACO256MB - (QTD_INODE * TAM_INODE + QTD_POSICOES + QTD_BLOCOS * TAM_BLOCO))
 
-def hasAnyAsterisco(txt: str) -> bool:
-    if txt.find('*') != -1:
-        return True
-    return False
+class Utils:
+    def __init__(self, arquivo: TextIOWrapper) -> None:
+        self.arquivo = arquivo
 
-def escreverArquivo(texto: str) -> None:
-    arquivo = open(FILE, "w")
-    arquivo.write(texto)
-    arquivo.close()
-
-def lerArquivo() -> str:
-    arquivo = open(FILE, "r")
-    txt = arquivo.read()
-    arquivo.close()
-    return txt
-
-def checaSePosicaoEstaAlocada(indexGeral: str) -> bool:
-    arquivo = open(FILE, "r")
-    arquivo.seek(int(indexGeral))
-    txt = arquivo.read()
-    arquivo.close()
-    if txt[0] == '0':
+    def hasAnyAsterisco(self, txt: str) -> bool:
+        if txt.find('*') != -1:
+            return True
         return False
-    return True
 
-def desalocaPosicao(indexGeral: str) -> None:
-    escreverArquivoPerIndex('0', int(indexGeral))
+    def escreverArquivo(self, texto: str) -> None:
+        arquivo = self.arquivo
+        arquivo.write(texto)
 
-def alocaPosicao(indexGeral: str) -> None:
-    escreverArquivoPerIndex('1', int(indexGeral))
+    def lerArquivo(self) -> str:
+        arquivo = self.arquivo
+        arquivo.seek(0)
+        txt = arquivo.read()
+        return txt
 
-def retornaInodeTotalExtensao(indexAtualGeral: str) -> List[iNode]:
-    startTimer = time.time()
-    inodePai = retornaInodeEstrutura(indexAtualGeral)
-    listApontadores = list(inodePai.apontadoresOutrosInodes)
-    listaInodesFilhos = []
-    count = 0
-    for i in range(0, len(listApontadores), 6):
-        count += 1
-        filho = ''
-        for j in range(i, i + 6):
-            filho += listApontadores[j]
-        if hasAnyAsterisco(filho):
-            continue
-        filhoGeral = indexInode2IndexGeral(filho)
-        if checaSePosicaoEstaAlocada(filhoGeral) == False:
-            continue
-        inodeFilho = retornaInodeEstrutura(filhoGeral)
-        if count == 5:
-            listaExtensao = retornaInodeTotalExtensao(filhoGeral)
-            listaInodesFilhos += listaExtensao
-        else:
-            listaInodesFilhos.append(inodeFilho)
-    endTimer = time.time()
-    # print('Tempo de execução: ', endTimer - startTimer)
-    return listaInodesFilhos
+    def checaSePosicaoEstaAlocada(self, indexGeral: str) -> bool:
+        arquivo = self.arquivo
+        arquivo.seek(int(indexGeral))
+        txt = arquivo.read(1)
+        if txt[0] == '0':
+            return False
+        return True
 
-def lerArquivoPerIndex(indexGeral: int) -> str:
-    inode = retornaInodeEstrutura(str(indexGeral))
-    listApontadores = list(inode.apontadoresParaBlocos[0])
-    txt = ''
-    # for para ler todos os blocos e concatenar
-    for i in range(0, len(listApontadores), 5):
-        bloco = ''
-        for j in range(i, i + 5):
-            bloco += listApontadores[j]
-        if hasAnyAsterisco(bloco):
-            continue
-        blocoGeral = indexBloco2IndexGeral(bloco)
-        if checaSePosicaoEstaAlocada(bloco) == False:
-            continue
-        txt += lerBlocoPerIndex(int(blocoGeral))
-    # for para ler o inode de extensao e chamar novamente a função de forma recursiva
-    listApontadores = list(inode.apontadoresOutrosInodes)
-    for i in range(0, len(listApontadores), 6):
-        inode = ''
-        for j in range(i, i + 6):
-            inode += listApontadores[j]
-        if hasAnyAsterisco(inode):
-            continue
-        if checaSePosicaoEstaAlocada(indexInode2IndexGeral(inode)) == False:
-            continue
+    def desalocaPosicao(self, indexGeral: str) -> None:
+        self.escreverArquivoPerIndex('0', int(indexGeral))
 
-        indexGeral = int(indexInode2IndexGeral(inode))
-        i = retornaInodeEstrutura(str(indexGeral))
+    def alocaPosicao(self, indexGeral: str) -> None:
+        self.escreverArquivoPerIndex('1', int(indexGeral))
 
-        txt += lerArquivoPerIndex(indexGeral)
+    def retornaInodeTotalExtensao(self, indexAtualGeral: str) -> List[iNode]:
+        startTimer = time.time()
+        inodePai = self.retornaInodeEstrutura(indexAtualGeral)
+        listApontadores = list(inodePai.apontadoresOutrosInodes)
+        listaInodesFilhos = []
+        count = 0
+        for i in range(0, len(listApontadores), 6):
+            count += 1
+            filho = ''
+            for j in range(i, i + 6):
+                filho += listApontadores[j]
+            if self.hasAnyAsterisco(filho):
+                continue
+            filhoGeral = self.indexInode2IndexGeral(filho)
+            if self.checaSePosicaoEstaAlocada(filhoGeral) == False:
+                continue
+            inodeFilho = self.retornaInodeEstrutura(filhoGeral)
+            if count == 5:
+                listaExtensao = self.retornaInodeTotalExtensao(filhoGeral)
+                listaInodesFilhos += listaExtensao
+            else:
+                listaInodesFilhos.append(inodeFilho)
+        return listaInodesFilhos
 
-    return txt
+    def lerArquivoPerIndex(self, indexGeral: int) -> str:
+        inode = self.retornaInodeEstrutura(str(indexGeral))
+        listApontadores = list(inode.apontadoresParaBlocos[0])
+        txt = ''
+        # for para ler todos os blocos e concatenar
+        for i in range(0, len(listApontadores), 5):
+            bloco = ''
+            for j in range(i, i + 5):
+                bloco += listApontadores[j]
+            if self.hasAnyAsterisco(bloco):
+                continue
+            blocoGeral = self.indexBloco2IndexGeral(bloco)
+            if self.checaSePosicaoEstaAlocada(bloco) == False:
+                continue
+            txt += self.lerBlocoPerIndex(int(blocoGeral))
+        # for para ler o inode de extensao e chamar novamente a função de forma recursiva
+        listApontadores = list(inode.apontadoresOutrosInodes)
+        for i in range(0, len(listApontadores), 6):
+            inode = ''
+            for j in range(i, i + 6):
+                inode += listApontadores[j]
+            if self.hasAnyAsterisco(inode):
+                continue
+            if self.checaSePosicaoEstaAlocada(self.indexInode2IndexGeral(inode)) == False:
+                continue
 
-def lerBlocoPerIndex(indexGeral: int) -> str:
-    arquivo = open(FILE, "r")
-    arquivo.seek(indexGeral)
-    txt = arquivo.read()
-    arquivo.close()
-    return txt[0: ESPACO4KB].replace('*', '')
+            indexGeral = int(self.indexInode2IndexGeral(inode))
+            i = self.retornaInodeEstrutura(str(indexGeral))
 
-def retornaInodeEstrutura(indexInodeGeral: str) -> iNode:
-    arquivo = open(FILE, "r")
-    arquivo.seek(int(indexInodeGeral))
-    txt = arquivo.read()
-    # print('txt', txt[0: 219], txt[154])
-    arquivo.close()
-    nomeArquivoDiretorio = txt[0:64]
-    criador = txt[64:70]
-    dono = txt[70:102]
-    tamanho = ''
-    dataCriacao = txt[102:128]
-    dataModificacao = txt[128:154]
-    permissoes = txt[154:161]
-    apontadoresParaBlocos = txt[161:186]
-    apontadoresOutrosInodes = txt[186:216]
-    inode = iNode(
-        indexGeral2IndexInode(indexInodeGeral),
-        nomeArquivoDiretorio, 
-        criador, 
-        dono, 
-        tamanho, 
-        dataCriacao, 
-        dataModificacao, 
-        permissoes, 
-        apontadoresParaBlocos, 
-        apontadoresOutrosInodes,
-    )
-    return inode
+            txt += self.lerArquivoPerIndex(indexGeral)
 
-def localizacaoInodePai(indexAtualGeral: str) -> str: # indexInodeGeral do pai
-    inode = retornaInodeEstrutura(indexAtualGeral)
-    return inode.criador[0]
+        return txt
 
-def procuraInodeFilho(nome: str, indexAtualGeral: str) -> str: # retorna posicao Geral 
-    # TODO: verificar se o nome é um arquivo ou um diretório, segundo um parâmetro
-    # Alterar toda função para utilizar a funçõ retornaTotalInodeExtensao
-    inodesFilhos = retornaInodeTotalExtensao(indexAtualGeral)
-    inodePai = retornaInodeEstrutura(indexAtualGeral)
-    if nome == '.':
-        return indexAtualGeral
-    if nome == '..':
-        if indexAtualGeral == indexInode2IndexGeral('0'):
+    def lerBlocoPerIndex(self, indexGeral: int) -> str:
+        arquivo = self.arquivo
+        arquivo.seek(indexGeral)
+        txt = arquivo.read(ESPACO4KB)
+        return txt.replace('*', '')
+
+    def retornaInodeEstrutura(self, indexInodeGeral: str) -> iNode:
+        arquivo = self.arquivo
+        startTime = time.time()
+        arquivo.seek(int(indexInodeGeral))
+        txt = arquivo.read(256)
+        # print('txt', txt[0: 219], txt[154])
+        nomeArquivoDiretorio = txt[0:64]
+        criador = txt[64:70]
+        dono = txt[70:102]
+        tamanho = ''
+        dataCriacao = txt[102:128]
+        dataModificacao = txt[128:154]
+        permissoes = txt[154:161]
+        apontadoresParaBlocos = txt[161:186]
+        apontadoresOutrosInodes = txt[186:216]
+        inode = iNode(
+            self.indexGeral2IndexInode(indexInodeGeral),
+            nomeArquivoDiretorio, 
+            criador, 
+            dono, 
+            tamanho, 
+            dataCriacao, 
+            dataModificacao, 
+            permissoes, 
+            apontadoresParaBlocos, 
+            apontadoresOutrosInodes,
+        )
+        return inode
+
+    def localizacaoInodePai(self, indexAtualGeral: str) -> str: # indexInodeGeral do pai
+        inode = self.retornaInodeEstrutura(indexAtualGeral)
+        return inode.criador[0]
+
+    def procuraInodeFilho(self, nome: str, indexAtualGeral: str) -> str: # retorna posicao Geral 
+        # TODO: verificar se o nome é um arquivo ou um diretório, segundo um parâmetro
+        # Alterar toda função para utilizar a funçõ retornaTotalInodeExtensao
+        inodesFilhos = self.retornaInodeTotalExtensao(indexAtualGeral)
+        inodePai = self.retornaInodeEstrutura(indexAtualGeral)
+        if nome == '.':
             return indexAtualGeral
-        return inodePai.criador[0].replace('*', '')
-    for filho in inodesFilhos:
-        if filho.nomeArquivoDiretorio[0].replace('*', '') == nome:
-            return indexInode2IndexGeral(filho.posicao[0]) 
-    return ''
+        if nome == '..':
+            if indexAtualGeral == self.indexInode2IndexGeral('0'):
+                return indexAtualGeral
+            return inodePai.criador[0].replace('*', '')
+        for filho in inodesFilhos:
+            if filho.nomeArquivoDiretorio[0].replace('*', '') == nome:
+                return self.indexInode2IndexGeral(filho.posicao[0]) 
+        return ''
 
-def adicionaFilhoNoPaiInode(indexAtualGeral: str, indexInodeFilhoPosicao: str) -> None:
-    inodePai = retornaInodeEstrutura(indexAtualGeral)
-    check = verificaApontadorInodeEstaCheio(indexAtualGeral)
-    if check == True:
-        inodePai = adicionaExtensaoNoPaiInode(indexAtualGeral, inodePai, 4*6)
-        adicionaFilhoNoPaiInode(indexInode2IndexGeral(inodePai.posicao[0]), indexInodeFilhoPosicao)
-    else:
+    def adicionaFilhoNoPaiInode(self, indexAtualGeral: str, indexInodeFilhoPosicao: str) -> None:
+        inodePai = self.retornaInodeEstrutura(indexAtualGeral)
+        check = self.verificaApontadorInodeEstaCheio(indexAtualGeral)
+        if check == True:
+            inodePai = self.adicionaExtensaoNoPaiInode(indexAtualGeral, inodePai, 4*6)
+            self.adicionaFilhoNoPaiInode(self.indexInode2IndexGeral(inodePai.posicao[0]), indexInodeFilhoPosicao)
+        else:
+            tmpApontadores = list(inodePai.apontadoresOutrosInodes)
+            indexInodeFilhoPosicao = indexInodeFilhoPosicao.rjust(6, '0')
+            for i in range(6):
+                tmpApontadores[check + i] = indexInodeFilhoPosicao[i]
+            inodePai.apontadoresOutrosInodes = "".join(tmpApontadores)
+            self.escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
+            self.alocaPosicao(indexInodeFilhoPosicao)
+
+    def adicionaExtensaoNoPaiInode(self, indexAtualGeral: str, inodePai: iNode, posicaoExtensaoNosApontadores: int) -> iNode:
+        check = posicaoExtensaoNosApontadores
+
+        # Lista de apontadores do pai
         tmpApontadores = list(inodePai.apontadoresOutrosInodes)
-        indexInodeFilhoPosicao = indexInodeFilhoPosicao.rjust(6, '0')
+
+        # Verifica se já existe uma extensão
+        extensao = inodePai.apontadoresOutrosInodes[check: check + 6]
+        if self.hasAnyAsterisco(extensao) == False and self.checaSePosicaoEstaAlocada(extensao) == True:
+            return self.retornaInodeEstrutura(self.indexInode2IndexGeral(extensao))
+        # Procura vaga
+        indexInodeCriadoGeral = self.procuraVaga(True)
+        indexInodeCriadoRelativo = self.indexGeral2IndexInode(indexInodeCriadoGeral)
+
+        # Cria um inode vazio
+        inode = iNode(indexInodeCriadoRelativo, '', '', '', '', '', '', '', '', '')
+        self.inserirInodeEmPosicaoValida(int(indexInodeCriadoRelativo), str(inode))
+        
+        # Adiciona apontador no filho
+        indexInodeFilhoPosicao = indexInodeCriadoRelativo.rjust(6, '0')
         for i in range(6):
             tmpApontadores[check + i] = indexInodeFilhoPosicao[i]
         inodePai.apontadoresOutrosInodes = "".join(tmpApontadores)
-        escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
-        alocaPosicao(indexInodeFilhoPosicao)
+        self.escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
+        novoInodePai = self.retornaInodeEstrutura(indexInodeCriadoGeral)
+        return novoInodePai
 
-def adicionaExtensaoNoPaiInode(indexAtualGeral: str, inodePai: iNode, posicaoExtensaoNosApontadores: int) -> iNode:
-    check = posicaoExtensaoNosApontadores
-
-    # Lista de apontadores do pai
-    tmpApontadores = list(inodePai.apontadoresOutrosInodes)
-
-    # Verifica se já existe uma extensão
-    extensao = inodePai.apontadoresOutrosInodes[check: check + 6]
-    if hasAnyAsterisco(extensao) == False and checaSePosicaoEstaAlocada(extensao) == True:
-        return retornaInodeEstrutura(indexInode2IndexGeral(extensao))
-    # Procura vaga
-    indexInodeCriadoGeral = procuraVaga(True)
-    indexInodeCriadoRelativo = indexGeral2IndexInode(indexInodeCriadoGeral)
-
-    # Cria um inode vazio
-    inode = iNode(indexInodeCriadoRelativo, '', '', '', '', '', '', '', '', '')
-    inserirInodeEmPosicaoValida(int(indexInodeCriadoRelativo), str(inode))
-    
-    # Adiciona apontador no filho
-    indexInodeFilhoPosicao = indexInodeCriadoRelativo.rjust(6, '0')
-    for i in range(6):
-        tmpApontadores[check + i] = indexInodeFilhoPosicao[i]
-    inodePai.apontadoresOutrosInodes = "".join(tmpApontadores)
-    escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
-    novoInodePai = retornaInodeEstrutura(indexInodeCriadoGeral)
-    return novoInodePai
-
-def removeFilhoNoPaiInode(indexInodeFilhoGeral: str) -> None:
-    inodeFilho = retornaInodeEstrutura(indexInodeFilhoGeral)
-    indexAtualGeral: str = inodeFilho.criador[0].replace('*', '')
-    inodePai = retornaInodeEstrutura(indexAtualGeral)
-    tmpApontadores = list(inodePai.apontadoresOutrosInodes)
-    for i in range(0, len(tmpApontadores), 6):
-        filho = ''
-        for j in range(i, i + 6):
-            filho += tmpApontadores[j]
-        if hasAnyAsterisco(filho):
-            continue
-        if checaSePosicaoEstaAlocada(indexInode2IndexGeral(filho)) == False:
-            continue
-        if indexInode2IndexGeral(filho) == indexInodeFilhoGeral:
+    def removeFilhoNoPaiInode(self, indexInodeFilhoGeral: str) -> None:
+        inodeFilho = self.retornaInodeEstrutura(indexInodeFilhoGeral)
+        indexAtualGeral: str = inodeFilho.criador[0].replace('*', '')
+        inodePai = self.retornaInodeEstrutura(indexAtualGeral)
+        tmpApontadores = list(inodePai.apontadoresOutrosInodes)
+        for i in range(0, len(tmpApontadores), 6):
+            filho = ''
             for j in range(i, i + 6):
-                tmpApontadores[j] = '*'
-            break
-    inodePai.apontadoresOutrosInodes = "".join(tmpApontadores)
-    escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
+                filho += tmpApontadores[j]
+            if self.hasAnyAsterisco(filho):
+                continue
+            if self.checaSePosicaoEstaAlocada(self.indexInode2IndexGeral(filho)) == False:
+                continue
+            if self.indexInode2IndexGeral(filho) == indexInodeFilhoGeral:
+                for j in range(i, i + 6):
+                    tmpApontadores[j] = '*'
+                break
+        inodePai.apontadoresOutrosInodes = "".join(tmpApontadores)
+        self.escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
 
-def verificaApontadorInodeEstaCheio(indexAtualGeral: str) -> int | bool:
-    inode = retornaInodeEstrutura(indexAtualGeral)
-    listApontadores = list(inode.apontadoresOutrosInodes)
-    for i in range(0, len(listApontadores) - 6, 6):
-        inodeFilho = ''
-        for j in range(i, i + 6):
-            inodeFilho += listApontadores[j]
-        if hasAnyAsterisco(inodeFilho):
-            return i 
-        if checaSePosicaoEstaAlocada(indexInode2IndexGeral(inodeFilho)) == False:
-            return i
-    return True
+    def verificaApontadorInodeEstaCheio(self, indexAtualGeral: str) -> int | bool:
+        inode = self.retornaInodeEstrutura(indexAtualGeral)
+        listApontadores = list(inode.apontadoresOutrosInodes)
+        for i in range(0, len(listApontadores) - 6, 6):
+            inodeFilho = ''
+            for j in range(i, i + 6):
+                inodeFilho += listApontadores[j]
+            if self.hasAnyAsterisco(inodeFilho):
+                return i 
+            if self.checaSePosicaoEstaAlocada(self.indexInode2IndexGeral(inodeFilho)) == False:
+                return i
+        return True
 
-def adicionaBlocoNoInode(indexAtualGeral: str, indexBlocoGeral: str) -> None:
-    inodePai = retornaInodeEstrutura(indexAtualGeral)
-    check = verificaApontadorBlocoEstaCheio(inodePai)
-    if isinstance(check, bool):
-        # Se true, quer dizer que apontadores para blocos no inode estão cheios
-        checkInodeCheio = verificaApontadorInodeEstaCheio(indexAtualGeral) # Retorna o index do apontador para inode que esta vazio ou True
-        if isinstance(checkInodeCheio, bool):
-            # Se entrar aqui quer dizer que apontadores para outros inodes esta cheio e devemos chamar recursivamente passando um apontador do inode pai
-            adicionaBlocoNoInode(indexInode2IndexGeral(inodePai.apontadoresOutrosInodes[0:6]), indexBlocoGeral)
+    def adicionaBlocoNoInode(self, indexAtualGeral: str, indexBlocoGeral: str) -> None:
+        inodePai = self.retornaInodeEstrutura(indexAtualGeral)
+        check = self.verificaApontadorBlocoEstaCheio(inodePai)
+        if isinstance(check, bool):
+            # Se true, quer dizer que apontadores para blocos no inode estão cheios
+            checkInodeCheio = self.verificaApontadorInodeEstaCheio(indexAtualGeral) # Retorna o index do apontador para inode que esta vazio ou True
+            if isinstance(checkInodeCheio, bool):
+                # Se entrar aqui quer dizer que apontadores para outros inodes esta cheio e devemos chamar recursivamente passando um apontador do inode pai
+                self.adicionaBlocoNoInode(self.indexInode2IndexGeral(inodePai.apontadoresOutrosInodes[0:6]), indexBlocoGeral)
+            else:
+                # Se entrar aqui quer dizer que apontadores para outros inodes não esta cheio e devemos adicionar um novo inode para extender os blocos
+                novoInode = self.adicionaExtensaoNoPaiInode(indexAtualGeral, inodePai, 0)
+                self.adicionaBlocoNoInode(self.indexInode2IndexGeral(novoInode.posicao[0]), indexBlocoGeral)
         else:
-            # Se entrar aqui quer dizer que apontadores para outros inodes não esta cheio e devemos adicionar um novo inode para extender os blocos
-            novoInode = adicionaExtensaoNoPaiInode(indexAtualGeral, inodePai, 0)
-            adicionaBlocoNoInode(indexInode2IndexGeral(novoInode.posicao[0]), indexBlocoGeral)
-    else:
-        # Significa que dentro do check há qual lugar devemos colocar o index do bloco
-        tmpApontadores = list(inodePai.apontadoresParaBlocos[0])
-        indexBlocoRelativo = indexGeral2IndexBloco(indexBlocoGeral)
-        indexBlocoRelativo = indexBlocoRelativo.rjust(5, '0')
-        for i in range(len(indexBlocoRelativo)):
-            tmpApontadores[check + i] = indexBlocoRelativo[i]
-        inodePai.setBloco("".join(tmpApontadores))
-        alocaPosicao(indexBlocoRelativo)
-        escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
+            # Significa que dentro do check há qual lugar devemos colocar o index do bloco
+            tmpApontadores = list(inodePai.apontadoresParaBlocos[0])
+            indexBlocoRelativo = self.indexGeral2IndexBloco(indexBlocoGeral)
+            indexBlocoRelativo = indexBlocoRelativo.rjust(5, '0')
+            for i in range(len(indexBlocoRelativo)):
+                tmpApontadores[check + i] = indexBlocoRelativo[i]
+            inodePai.setBloco("".join(tmpApontadores))
+            self.alocaPosicao(indexBlocoRelativo)
+            self.escreverArquivoPerIndex(str(inodePai), int(indexAtualGeral))
 
-def verificaApontadorBlocoEstaCheio(inode: iNode) -> int | bool:
-    listApontadoresBlocos = list(inode.apontadoresParaBlocos[0])
-    for i in range(0, len(listApontadoresBlocos), 5):
-        bloco = ''
-        for j in range(i, i + 5):
-            bloco += listApontadoresBlocos[j]
-        if hasAnyAsterisco(bloco):
-            return i
-        if checaSePosicaoEstaAlocada(indexBloco2IndexGeral(bloco)) == False:
-            return i
-    return True
+    def verificaApontadorBlocoEstaCheio(self, inode: iNode) -> int | bool:
+        listApontadoresBlocos = list(inode.apontadoresParaBlocos[0])
+        for i in range(0, len(listApontadoresBlocos), 5):
+            bloco = ''
+            for j in range(i, i + 5):
+                bloco += listApontadoresBlocos[j]
+            if self.hasAnyAsterisco(bloco):
+                return i
+            if self.checaSePosicaoEstaAlocada(self.indexBloco2IndexGeral(bloco)) == False:
+                return i
+        return True
 
-def indexGeral2IndexInode(indexGeral: str) -> str:
-    indexGeralInt = int(indexGeral)
-    return str((indexGeralInt - QTD_POSICOES) // TAM_INODE)
+    def indexGeral2IndexInode(self, indexGeral: str) -> str:
+        indexGeralInt = int(indexGeral)
+        return str((indexGeralInt - QTD_POSICOES) // TAM_INODE)
 
-def indexInode2IndexGeral(indexInode: str or int) -> str:
-    indexInodeInt = int(indexInode)
-    return str(indexInodeInt * TAM_INODE + QTD_POSICOES)
+    def indexInode2IndexGeral(self, indexInode: str or int) -> str:
+        indexInodeInt = int(indexInode)
+        return str(indexInodeInt * TAM_INODE + QTD_POSICOES)
 
-def indexGeral2IndexBloco(indexGeral: str) -> str:
-    indexGeralInt = int(indexGeral)
-    return str((indexGeralInt - QTD_INODE - QTD_INODE * TAM_INODE) // TAM_BLOCO)
+    def indexGeral2IndexBloco(self, indexGeral: str) -> str:
+        indexGeralInt = int(indexGeral)
+        return str((indexGeralInt - QTD_INODE - QTD_INODE * TAM_INODE) // TAM_BLOCO)
 
-def indexBloco2IndexGeral(indexBloco: str) -> str:
-    indexBlocoInt = int(indexBloco)
-    return str(indexBlocoInt * TAM_BLOCO + QTD_INODE + QTD_INODE * TAM_INODE)
+    def indexBloco2IndexGeral(self, indexBloco: str) -> str:
+        indexBlocoInt = int(indexBloco)
+        return str(indexBlocoInt * TAM_BLOCO + QTD_INODE + QTD_INODE * TAM_INODE)
 
-def procuraVaga(isInode: bool) -> str:
-    arquivo = open(FILE, "r")
-    texto = arquivo.read()
-    if isInode:
-        for i in range(QTD_INODE):
-            if texto[i] == '0':
-                escreverArquivoPerIndex('1', i)
-                arquivo.close()
-                return indexInode2IndexGeral(str(i))
-        arquivo.close()
-        return '' 
-    else:
-        for i in range(QTD_INODE, QTD_POSICOES):
-            if texto[i] == '0':
-                escreverArquivoPerIndex('1', i)
-                arquivo.close()
-                return indexBloco2IndexGeral(str(i))
-        arquivo.close()
-        return ''
+    def procuraVaga(self, isInode: bool) -> str:
+        arquivo = self.arquivo
+        if isInode:
+            arquivo.seek(0)
+            texto = arquivo.read(QTD_INODE)
+            for i in range(QTD_INODE):
+                if texto[i] == '0':
+                    self.escreverArquivoPerIndex('1', i)
+                    return self.indexInode2IndexGeral(str(i))
+            return '' 
+        else:
+            arquivo.seek(QTD_INODE)
+            texto = arquivo.read(QTD_POSICOES - QTD_INODE)
+            for i in range(QTD_POSICOES - QTD_INODE):
+                if texto[i] == '0':
+                    self.escreverArquivoPerIndex('1', i)
+                    return self.indexBloco2IndexGeral(str(i))
+            return ''
 
-def removerInode(indexGeral: str) -> None:
-    # TODO: remover todos os arquivos e inodes associados a ele
-    indexEspecificoPosicao = int(indexGeral2IndexInode(indexGeral))
-    escreverArquivoPerIndex('0', indexEspecificoPosicao)
-    escreverArquivoPerIndex(''.ljust(256, '*'), int(indexGeral))
+    def removerInode(self, indexGeral: str) -> None:
+        # TODO: remover todos os arquivos e inodes associados a ele
+        indexEspecificoPosicao = int(self.indexGeral2IndexInode(indexGeral))
+        self.escreverArquivoPerIndex('0', indexEspecificoPosicao)
+        self.escreverArquivoPerIndex(''.ljust(256, '*'), int(indexGeral))
 
-def inserirInodeEmPosicaoValida(indexRelativo: int, inode: str) -> bool:
-    if indexRelativo < 0 or indexRelativo > QTD_INODE:
-        return False
-    indexGeral = int(indexInode2IndexGeral(str(indexRelativo)))
-    alocaPosicao(str(indexRelativo))
-    escreverArquivoPerIndex(inode, indexGeral)
-    return True
+    def inserirInodeEmPosicaoValida(self, indexRelativo: int, inode: str) -> bool:
+        if indexRelativo < 0 or indexRelativo > QTD_INODE:
+            return False
+        indexGeral = int(self.indexInode2IndexGeral(str(indexRelativo)))
+        self.alocaPosicao(str(indexRelativo))
+        self.escreverArquivoPerIndex(inode, indexGeral)
+        return True
 
-def inserirBlocoEmPosicaoValida(index: int, bloco: str) -> bool:
-    if index < 0 or index > QTD_BLOCOS:
-        return False
+    def inserirBlocoEmPosicaoValida(self, index: int, bloco: str) -> bool:
+        if index < 0 or index > QTD_BLOCOS:
+            return False
 
-    texto = bloco.ljust(ESPACO4KB, '*')
-    escreverArquivoPerIndex(texto, int(indexBloco2IndexGeral(str(index))))
-    return True
-
-def checkSeSistemaExiste() -> None:
-    try:
-        arquivo = open(FILE, "r")
-        arquivo.close()
-    except:
-        # Cria arquivo sistema.txt
-        arquivo = open(FILE, "w")
-        arquivo.close()
-        limparSistema()
-
-def limparSistema() -> None:
-    texto = list("*" * ESPACO256MB) # 256Mb sendo o tamanho do arquivo
-
-    # Libera tudo
-    texto[0: QTD_POSICOES] = "0" * QTD_POSICOES
-    escreverArquivo("".join(texto))
+        texto = bloco.ljust(ESPACO4KB, '*')
+        self.escreverArquivoPerIndex(texto, int(self.indexBloco2IndexGeral(str(index))))
+        return True
 
 
-    # Procura espaço para colocar a raiz
-    indexGeral = procuraVaga(True)
-    # Cria inode raiz
-    
-    inode = iNode(indexGeral2IndexInode(indexGeral), "root", indexInode2IndexGeral('1'), "root", '0')
 
-    text = str(inode)
+    def limparSistema(self) -> None:
+        texto = list("*" * ESPACO256MB) # 256Mb sendo o tamanho do arquivo
 
-    # Insere inode raiz no index encontrado
-    inserirInodeEmPosicaoValida(int(indexGeral2IndexInode(indexGeral)), text)
+        # Libera tudo
+        texto[0: QTD_POSICOES] = "0" * QTD_POSICOES
+        self.escreverArquivo("".join(texto))
 
-def escreverArquivoPerIndex(texto: str, indexGeral: int) -> None:
-    arquivo = open(FILE, "r+")
-    arquivo.seek(indexGeral)
-    arquivo.write(texto)
-    arquivo.close()
+        # Procura espaço para colocar a raiz
+        indexGeral = self.procuraVaga(True)
+        
+        # Cria inode raiz
+        inode = iNode(self.indexGeral2IndexInode(indexGeral), "root", self.indexInode2IndexGeral('1'), "root", '0')
+
+        text = str(inode)
+
+        # Insere inode raiz no index encontrado
+        self.inserirInodeEmPosicaoValida(int(self.indexGeral2IndexInode(indexGeral)), text)
+
+    def escreverArquivoPerIndex(self, texto: str, indexGeral: int) -> None:
+        arquivo = self.arquivo
+        arquivo.seek(indexGeral)
+        arquivo.write(texto)

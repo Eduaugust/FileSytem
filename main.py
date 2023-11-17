@@ -14,15 +14,33 @@ QTD_BLOCOS = int(536870912/8965)
 FILE = 'sistema.txt'
 ESPACO256MB = 1024 * 1024 * 256 # 256Mb
 ESPACO4KB = 4096 # 4kb
-
+def checkSeSistemaExiste() -> bool:
+    try:
+       # Verifica se o arquivo sistema.txt existe
+        arquivo = open(FILE, "r")
+        arquivo.close()
+        return True
+    except:
+        # Cria arquivo sistema.txt
+        arquivo = open(FILE, "w")
+        arquivo.close()
+        return False
 
 if __name__ == "__main__":
-    checkSeSistemaExiste()
-    raiz = indexInode2IndexGeral('0')
+    r = checkSeSistemaExiste()
+        
+    arquivo = open(FILE, 'r+')
+    utils = Utils(arquivo)
+    if not r:
+        utils.limparSistema()
+    raiz = utils.indexInode2IndexGeral('0')
     indexAtualGeral = raiz
     command = ''
-    dir = pwd(indexAtualGeral)
     while True:
+        utils = Utils(arquivo)
+        df = DirFunctions(arquivo)
+        ff = FileFunctions(arquivo)
+        dir = df.pwd(indexAtualGeral)
         txt = input(dir + ' > ')
         # if txt has any "*" symbol, print error
         txt = txt.split()
@@ -30,37 +48,37 @@ if __name__ == "__main__":
         if command == 'exit':
             break
         elif command == 'clearALL':
-            limparSistema()
+            utils.limparSistema()
         elif command == 'mkdir':
-            mkdir(txt, indexAtualGeral)
+            df.mkdir(txt, indexAtualGeral)
         elif command == 'rmdir':
-            rmdir(txt, indexAtualGeral)
+            df.rmdir(txt, indexAtualGeral)
         elif command == 'ls':
-            ls(indexAtualGeral)
+            df.ls(indexAtualGeral)
         elif command == 'cd':
-            check = cd(txt, indexAtualGeral)
+            check = df.cd(txt, indexAtualGeral)
             if not isinstance(check, str):
                 continue
             indexAtualGeral = check
-            dir = pwd(indexAtualGeral)
         elif command == 'mv':
-            mv(txt, indexAtualGeral)
+            ff.mv(txt, indexAtualGeral)
         elif command == 'ln':
-            ln(txt, indexAtualGeral)
+            df.ln(txt, indexAtualGeral)
         elif command == 'touch':
-            touch(txt, indexAtualGeral)
+            ff.touch(txt, indexAtualGeral)
         elif command == 'echo':
-            echo(txt, indexAtualGeral)
+            ff.echo(txt, indexAtualGeral)
         elif command == 'rm':
-            resposta = rm(txt, indexAtualGeral)
+            resposta = ff.rm(txt, indexAtualGeral)
             if resposta != '':
                 print(resposta)
         elif command == 'cat':
-            resposta = cat(txt, indexAtualGeral)
+            resposta = ff.cat(txt, indexAtualGeral)
             if resposta != '':
                 print(resposta)
         elif command == 'cp':
-            cp(txt, indexAtualGeral)
+            ff.cp(txt, indexAtualGeral)
         elif command == 'clear':
             os.system('cls' if os.name == 'nt' else 'echo -e \\\\033c')
+    arquivo.close()
          
