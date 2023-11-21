@@ -44,31 +44,28 @@ class FileFunctions:
         nomeArquivo = pasta.pop(-1)
         if nomeArquivo == '':
             nomeArquivo = pasta.pop(-1)
-        pasta = ''.join(pasta)
+        pasta = '/'.join(pasta)
         if len(pasta) == 0:
             pasta = './'
+
         
         # Verifica se o caminho existe
         indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
         if not isinstance(indexPasta, str):
             return ''
         
+        # Verifica se ja tem o mesmo nome
+        indexNome = self.df.cd(['cd', nomeArquivo], indexPasta, False)
+        if indexNome != False:
+            return ''
         
-        # Verifica se o nome já esta em uso
-        filhoAchado = self.utils.procuraInodeFilho(nomeArquivo, indexAtualGeral=indexPasta)
-        if filhoAchado != '':
-            inodeFilhoEcontrado = self.utils.retornaInodeEstrutura(filhoAchado)
-            if inodeFilhoEcontrado.permissoes[0] == 'f':
-                print("Erro: nome de arquivo já em uso")
-                return ''
-            
+        
         # Procura espaço vazio no sistema para o iNode do arquivo
         indexInodeCriadoGeral = self.utils.procuraVaga(True)
 
         # Cria Inode
         indexCriadoRelativo = self.utils.indexGeral2IndexInode(indexInodeCriadoGeral)
-        inode = iNode(indexCriadoRelativo, nomeArquivo, indexPasta, "usuario", '', permissoes="frwxr--")
-
+        inode = iNode(indexCriadoRelativo, nomeArquivo, indexPasta, "usuario", '', permissoes="frwxr--", usuarioCriador="usuario")
 
         # adiciona novo arquivo como filho no pai
         self.utils.adicionaFilhoNoPaiInode(indexPasta, indexCriadoRelativo)    
@@ -89,7 +86,7 @@ class FileFunctions:
         nomeArquivo = pasta.pop(-1)
         if nomeArquivo == '':
             nomeArquivo = pasta.pop(-1)
-        pasta = ''.join(pasta)
+        pasta = '/'.join(pasta)
         if len(pasta) == 0:
             pasta = './'
 
@@ -133,12 +130,9 @@ class FileFunctions:
         nomeArquivo = pasta.pop(-1)
         if nomeArquivo == '':
             nomeArquivo = pasta.pop(-1)
-        pasta = ''.join(pasta)
+        pasta = '/'.join(pasta)
         if len(pasta) == 0:
             pasta = './'
-        
-        
-        antesFor = time.time()
         
         # Verifica se o arquivo ja existe
         indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
@@ -148,7 +142,7 @@ class FileFunctions:
         indexArquivoGeral = self.df.cd(['cd', nome], indexAtualGeral, False)
         if txt[-2] == '>' or not isinstance(indexArquivoGeral, str):
             # Sobrescreve o artigo
-            self.rm(['rm', nome], indexAtualGeral)
+            rem = self.rm(['rm', nome], indexAtualGeral)
             # Crindo arquivo 
             indexArquivoGeral = self.touch(['touch', nome], indexAtualGeral)
             if indexArquivoGeral == '':
@@ -164,12 +158,10 @@ class FileFunctions:
             textoAdc = textoAdc.replace('\x00', '')
             conteudo = str(textoAdc + conteudo)
         
-        # print(time.time() - antesFor, 'antesFor')
-        
         # Separa o conteudo em um vetor onde cada posição tem 4kb
         conteudoSeparado: List[str] = []
         for i in range(0, len(conteudo), ESPACO4KB):
-            conteudoSeparado.append(conteudo[i:i+ESPACO4KB])
+            conteudoSeparado.append(conteudo[i:i+ESPACO4KB].ljust(ESPACO4KB, '*'))
         
         # Enquanto ainda tiver conteudo para escrever, cria um bloco e aponta pro pai
         fo = time.time()
@@ -198,7 +190,7 @@ class FileFunctions:
         nomeArquivo = pasta.pop(-1)
         if nomeArquivo == '':
             nomeArquivo = pasta.pop(-1)
-        pasta = ''.join(pasta)
+        pasta = '/'.join(pasta)
         if len(pasta) == 0:
             pasta = './'
         
@@ -222,6 +214,7 @@ class FileFunctions:
             print("Erro: cp <nomeArquivo> <nomeArquivo2>")
             return
         nome = txt[1]
+        destino = txt[2]
         if nome == '.' or nome == '..' or self.utils.hasAnyAsterisco(nome):
             print("Erro: nome de arquivo inválido")
             return
@@ -231,17 +224,33 @@ class FileFunctions:
         nomeArquivo = pasta.pop(-1)
         if nomeArquivo == '':
             nomeArquivo = pasta.pop(-1)
-        pasta = ''.join(pasta)
+        pasta = '/'.join(pasta)
         if len(pasta) == 0:
             pasta = './'
         
         # Verifica se o arquivo ja existe
         indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
         if not isinstance(indexPasta, str):
+            print("Erro: caminho não encontrado")
             return
+        
+        # Verifica se o caminho existe
+        pastaDestino = destino.split('/')
+        nomeArquivoFinal = pastaDestino.pop(-1)
+        if nomeArquivoFinal == '':
+            nomeArquivoFinal = pastaDestino.pop(-1)
+        pastaDestino = '/'.join(pastaDestino)
+        if len(pastaDestino) == 0:
+            pastaDestino = './'
+        indexPastaFinal = self.df.cd(['cd', pastaDestino], indexAtualGeral)
+        if not isinstance(indexPastaFinal, str):
+            print("Erro: caminho não encontrado")
+            return
+        
         # achou uma pasta com o mesmo nome
         indexArquivo = self.df.cd(['cd', nomeArquivo], indexPasta, False)
         if not isinstance(indexArquivo, str):
+            print("Erro: arquivo não encontrado")
             return
         
         # Conteudo do arquivo original
@@ -249,7 +258,8 @@ class FileFunctions:
         conteudo.replace('\x00', '')
 
         # Cria novo arquivo com o conteudo do original
-        self.echo(['echo', '"' + conteudo + '"', '>', txt[2]], indexPasta)
+        
+        self.echo(['echo', '"' + conteudo + '"', '>', nomeArquivoFinal], indexPastaFinal)
 
     def mv(self, txt: List[str], indexAtualGeral: str) -> None:
         # Funções para organizar
@@ -307,10 +317,10 @@ class FileFunctions:
         conteudo = self.utils.lerArquivoPerIndex(int(indexOrigemArquivo))
         conteudo.replace('\x00', '')
 
+        # Remove o arquivo original
+        self.rm(['rm',nomeInode], criadorInode)
+
         # Cria novo arquivo com o conteúdo do original
         self.echo(['echo', '"' + conteudo + '"', '>', novoNomeArquivo], indexDestino)
 
 
-
-        # Remove o arquivo original
-        self.rm(['rm',nomeInode], criadorInode)

@@ -32,13 +32,8 @@ class Utils:
 
     def escreverArquivo(self, texto: str) -> None:
         arquivo = self.arquivo
-        arquivo.write(texto)
-
-    def lerArquivo(self) -> str:
-        arquivo = self.arquivo
         arquivo.seek(0)
-        txt = arquivo.read()
-        return txt
+        arquivo.write(texto)
 
     def checaSePosicaoEstaAlocada(self, indexGeral: str) -> bool:
         arquivo = self.arquivo
@@ -53,6 +48,22 @@ class Utils:
 
     def alocaPosicao(self, indexGeral: str) -> None:
         self.escreverArquivoPerIndex('1', int(indexGeral))
+    
+    def retornaTamanhoArquivo(self, indexAtualGeral: str) -> int:
+        conteudo = self.lerArquivoPerIndex(int(indexAtualGeral))
+        return len(conteudo)
+    
+    def retornaTamanhoPasta(self, indexAtualGeral: str) -> int:
+        inodesFilhos = self.retornaInodeTotalExtensao(indexAtualGeral)
+        tamanho = 0
+
+        for inode in inodesFilhos:
+            # Se o inode for um arquivo, ler conteudo e retornar tamanho
+            if inode.permissoes[0][0] == 'f':
+                tamanho += self.retornaTamanhoArquivo(self.indexInode2IndexGeral(inode.posicao[0]))
+            else:
+                tamanho += self.retornaTamanhoPasta(self.indexInode2IndexGeral(inode.posicao[0]))
+        return tamanho
 
     def retornaInodeTotalExtensao(self, indexAtualGeral: str) -> List[iNode]:
         startTimer = time.time()
@@ -132,12 +143,14 @@ class Utils:
         permissoes = txt[154:161]
         apontadoresParaBlocos = txt[161:186]
         apontadoresOutrosInodes = txt[186:216]
+        usuarioCriador = txt[216:248]
         inode = iNode(
             self.indexGeral2IndexInode(indexInodeGeral),
             nomeArquivoDiretorio, 
             criador, 
             dono, 
             tamanho, 
+            usuarioCriador,
             dataCriacao, 
             dataModificacao, 
             permissoes, 
@@ -308,8 +321,9 @@ class Utils:
             texto = arquivo.read(QTD_POSICOES - QTD_INODE)
             for i in range(QTD_POSICOES - QTD_INODE):
                 if texto[i] == '0':
-                    self.escreverArquivoPerIndex('1', i)
-                    return self.indexBloco2IndexGeral(str(i))
+                    indexGeralBloco = i + QTD_INODE
+                    self.escreverArquivoPerIndex('1', indexGeralBloco)
+                    return self.indexBloco2IndexGeral(str(indexGeralBloco))
             return ''
 
     def removerInode(self, indexGeral: str) -> None:
@@ -347,12 +361,17 @@ class Utils:
         indexGeral = self.procuraVaga(True)
         
         # Cria inode raiz
-        inode = iNode(self.indexGeral2IndexInode(indexGeral), "root", self.indexInode2IndexGeral('1'), "root", '0')
+        inode = iNode(self.indexGeral2IndexInode(indexGeral), "root", self.indexInode2IndexGeral('1'), "root", '0', usuarioCriador="root")
 
         text = str(inode)
 
         # Insere inode raiz no index encontrado
         self.inserirInodeEmPosicaoValida(int(self.indexGeral2IndexInode(indexGeral)), text)
+    
+    def atualizaDataModificacao(self, indexArquivoGeral: str) -> None:
+        inode = self.retornaInodeEstrutura(indexArquivoGeral)
+        inode.setDataModificacao()
+        self.escreverArquivoPerIndex(str(inode), int(indexArquivoGeral))
 
     def escreverArquivoPerIndex(self, texto: str, indexGeral: int) -> None:
         arquivo = self.arquivo

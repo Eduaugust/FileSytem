@@ -22,10 +22,11 @@ class iNode:
     # Permissões de acesso (dono e outros usuários - leitura, escrita, execução)
     # Apontadores para blocos
     # Apontador para eventual outro i-node
-    def __init__(self, posicao: str, nomeArquivoDiretorio: str, criador: str, dono: str, tamanho: str, dataCriacao: str = str(datetime.datetime.now()), dataModificacao: str = str(datetime.datetime.now()), permissoes: str = "drwxr--", apontadoresParaBlocos: str = '', apontadoresOutrosInodes: str = '') -> None:
+    def __init__(self, posicao: str, nomeArquivoDiretorio: str, criador: str, dono: str, tamanho: str, usuarioCriador: str, dataCriacao: str = str(datetime.datetime.now()), dataModificacao: str = str(datetime.datetime.now()), permissoes: str = "drwxr--", apontadoresParaBlocos: str = '', apontadoresOutrosInodes: str = '') -> None:
         self.posicao = posicao, # posicao relativa
         self.nomeArquivoDiretorio = nomeArquivoDiretorio, # 64 caracteres
         self.criador = criador, # 6 caracteres -> index geral
+        self.usuarioCriador = usuarioCriador, # 32 caracteres
         self.dono = dono, # 32 caracteres
         self.tamanho = tamanho, # tamanho do arquivo em bytes
         self.dataCriacao = dataCriacao, # 26 caracteres -> data de criação do arquivo
@@ -33,7 +34,7 @@ class iNode:
         self.permissoes = permissoes, # 7 caracteres permissões de acesso => drwxrwx or frwxr-- to others just leitura
         self.apontadoresParaBlocos = apontadoresParaBlocos, # custo = 5*5 caracteres -> 5 blocos no máximo
         self.apontadoresOutrosInodes = apontadoresOutrosInodes # 5*6 inodes no máximo ->6 caracteres por inode para posicao
-        # sobrou 40 caracteres para bater 256
+        # sobrou 8 caracteres para bater 256
 
     def __repr__(self) -> str:
         return str(self.nomeArquivoDiretorio) + str(self.criador) + str(self.dono) + str(self.tamanho) + str(self.dataCriacao) + str(self.dataModificacao) + str(self.permissoes) + str(self.apontadoresParaBlocos) + str(self.apontadoresOutrosInodes)
@@ -47,6 +48,7 @@ class iNode:
         text += str(self.permissoes[0].ljust(7, '*'))
         text += str(self.apontadoresParaBlocos[0].ljust(25, '*')) if self.apontadoresParaBlocos else ''.ljust(25, '*')
         text += str(self.apontadoresOutrosInodes.ljust(30, '*')) if self.apontadoresOutrosInodes else ''.ljust(30, '*')
+        text += str(self.usuarioCriador[0].ljust(32, '*'))
         return text
     # set name
     def setName(self, newName: str) -> None:
@@ -56,4 +58,7 @@ class iNode:
         self.criador =  tuple([newCriador])
     
     def setBloco(self, newBloco: str) -> None:
-        self.apontadoresParaBlocos = tuple([newBloco]) 
+        self.apontadoresParaBlocos = tuple([newBloco])
+    
+    def setDataModificacao(self) -> None:
+        self.dataModificacao = tuple([str(datetime.datetime.now())])

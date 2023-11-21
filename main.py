@@ -58,8 +58,11 @@ if __name__ == "__main__":
         elif command == 'cd':
             check = df.cd(txt, indexAtualGeral)
             if not isinstance(check, str):
+                print("Erro: diretório não encontrado")
                 continue
             indexAtualGeral = check
+        elif command == 'du':
+            df.du(txt, indexAtualGeral)
         elif command == 'mv':
             ff.mv(txt, indexAtualGeral)
         elif command == 'ln':

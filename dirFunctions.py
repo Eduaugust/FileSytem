@@ -43,7 +43,7 @@ class DirFunctions:
         if len(nome) == 0:
             novoLugarGeral = indexAtualGeral
         else:
-            novoLugarGeral = self.cd(['cd', ''.join(nome)], indexAtualGeral)
+            novoLugarGeral = self.cd(['cd', '/'.join(nome)], indexAtualGeral)
         # check if is not a str instance
         if not isinstance(novoLugarGeral, str):
             return
@@ -56,7 +56,7 @@ class DirFunctions:
         indexInodeCriadoGeral = self.utils.procuraVaga(True)
 
         # Cria Inode
-        inode = iNode(self.utils.indexGeral2IndexInode(indexInodeCriadoGeral), nomeNovoInode, novoLugarGeral, "usuario", '')
+        inode = iNode(self.utils.indexGeral2IndexInode(indexInodeCriadoGeral), nomeNovoInode, novoLugarGeral, "usuario", '', usuarioCriador="usuario")
 
         indexCriadoRelativo = self.utils.indexGeral2IndexInode(indexInodeCriadoGeral)
 
@@ -112,13 +112,10 @@ class DirFunctions:
                     continue
                 inodeEncontradoGeral = self.utils.procuraInodeFilho(nomeInode, indexAtualGeral=tmpIndexAtualGeral)
                 if inodeEncontradoGeral == '':
-                    if index == 0:
-                        print("Erro: diretório não encontrado")
                     return False
                 tmpIndexAtualGeral = inodeEncontradoGeral
             tmpInode = self.utils.retornaInodeEstrutura(tmpIndexAtualGeral)
             if tmpInode.permissoes[0][0] != 'd' and wantJustDir:
-                print("Erro: não é um diretório")
                 return False
             if tmpInode.permissoes[0][0] == 'd' and not wantJustDir:
                 return False
@@ -134,12 +131,10 @@ class DirFunctions:
                     continue
                 inodeEncontradoGeral = self.utils.procuraInodeFilho(nomeInode, indexAtualGeral=tmpIndexAtualGeral)
                 if inodeEncontradoGeral == '':
-                    print("Erro: diretório não encontrado 2")
                     return False
                 tmpIndexAtualGeral = inodeEncontradoGeral
             tmpInode = self.utils.retornaInodeEstrutura(tmpIndexAtualGeral)
             if tmpInode.permissoes[0][0] != 'd' and wantJustDir:
-                print("Erro: não é um diretório")
                 return False
             if tmpInode.permissoes[0][0] == 'd' and not wantJustDir:
                 return False
@@ -183,5 +178,20 @@ class DirFunctions:
         # Faz o link
         self.utils.adicionaFilhoNoPaiInode(indexGeralFim, self.utils.indexGeral2IndexInode(indexGeralInicio))
 
-        print("Link criado com sucesso")
         return
+    
+    def du(self, txt: List[str], indexAtualGeral: str) -> None:
+        # du <nomeDiretorio>
+        if len(txt) != 3:
+            print("Erro: du -sh <nomeDiretorio>")
+            return
+        # Retorna tamanho da pasta
+        nome = txt[2]
+        indexGeral = self.cd(['cd', nome], indexAtualGeral)
+        if not isinstance(indexGeral, str):
+            indexGeral = self.cd(['cd', nome], indexAtualGeral, False)
+            if not isinstance(indexGeral, str):
+                print("Erro: diretório não encontrado")
+            return
+        tam = self.utils.retornaTamanhoPasta(indexGeral)
+        print(tam)
