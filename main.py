@@ -1,3 +1,12 @@
+# [] - Ao criar o sistema, criar uma HOME
+# [] - Criar um novo usuario (com senha e estar armazenado em um arquivo sem ser 
+# texto plano - hash - usuários normais não podem ver o arquivo de usuários)
+# [] - Login no novo usuário
+# [] - Cada arquivo tem um dono e permissões de leitura e escrita
+# [] - Chmod (para trocar as permissões dos arquivos/diretórios) 
+# [] - Chown (para trocar o dono de um arquivo/diretório) 
+
+
 import os
 from utils import *
 from dirFunctions import *
