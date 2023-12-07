@@ -8,6 +8,7 @@
 
 
 import os
+from seguranca import Seguranca
 from utils import *
 from dirFunctions import *
 from fileFunctions import *
@@ -23,6 +24,7 @@ QTD_BLOCOS = int(536870912/8965)
 FILE = 'sistema.txt'
 ESPACO256MB = 1024 * 1024 * 256 # 256Mb
 ESPACO4KB = 4096 # 4kb
+
 def checkSeSistemaExiste() -> bool:
     try:
        # Verifica se o arquivo sistema.txt existe
@@ -34,15 +36,28 @@ def checkSeSistemaExiste() -> bool:
         arquivo = open(FILE, "w")
         arquivo.close()
         return False
+    
+
 
 if __name__ == "__main__":
     r = checkSeSistemaExiste()
-        
     arquivo = open(FILE, 'r+')
     utils = Utils(arquivo)
+    raiz = utils.indexInode2IndexGeral('0')
+    df = DirFunctions(arquivo)
+    ff = FileFunctions(arquivo)
     if not r:
         utils.limparSistema()
-    raiz = utils.indexInode2IndexGeral('0')
+        
+        df = DirFunctions(arquivo)
+        # Cria home
+        df.mkdir('mkdir home'.split(), raiz)
+    raiz = df.cd('cd home'.split(), raiz)
+    
+    seg = Seguranca(arquivo, utils, df, ff, df.ls(raiz))
+    # Create User or Login
+    seg.createOrLogin()
+
     indexAtualGeral = raiz
     command = ''
     while True:

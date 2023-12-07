@@ -91,11 +91,15 @@ class DirFunctions:
         
         return True
 
-    def ls(self, indexAtualGeral: str) -> None:
+    def ls(self, indexAtualGeral: str) -> List[str]:
         # Procura inode do diretório
         listaInodes = self.utils.retornaInodeTotalExtensao(indexAtualGeral)
+        strList = []
         for inode in listaInodes:
-            print(inode.nomeArquivoDiretorio[0].replace('*', ''))
+            pasta = inode.nomeArquivoDiretorio[0].replace('*', '')
+            print(pasta)
+            strList.append(pasta)
+        return strList
 
     def cd(self, txt: List[str], indexAtualGeral: str, wantJustDir: bool = True) -> str | bool:
         if len(txt) != 2:
