@@ -7,6 +7,8 @@
 # - [x] Renomear/mover arquivo (mv arquivo1 arquivo2)
 # - [x] Criar links entre arquivos (ln -s arquivoOriginal link)
 
+# - [] Por padrão, leitura apenas para outros usuarios, permitindo cat e ls
+
 from typing import List
 from dirFunctions import DirFunctions
 from iNode import *
@@ -25,12 +27,13 @@ TAM_BLOCO = ESPACO4KB
 QTD_BLOCOS = int(536870912/8965)
 
 class FileFunctions:
-    def __init__(self, arquivo: TextIOWrapper) -> None:
+    def __init__(self, arquivo: TextIOWrapper, usuario: str) -> None:
         self.arquivo = arquivo
-        self.df = DirFunctions(arquivo=self.arquivo)
+        self.df = DirFunctions(arquivo=self.arquivo, usuario=usuario)
         self.utils = Utils(arquivo=self.arquivo)
+        self.usuario = usuario
 
-    def touch(self, txt: List[str], indexAtualGeral: str) -> str:
+    def touch(self, txt: List[str], indexAtualGeral: str, permissao: str = 'w') -> str:
         # Checa se o comando foi digitado corretamente
         if len(txt) != 2:
             print("Erro: touch <nomeArquivo>")
@@ -50,12 +53,12 @@ class FileFunctions:
 
         
         # Verifica se o caminho existe
-        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
+        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral, permissao)
         if not isinstance(indexPasta, str):
             return ''
         
         # Verifica se ja tem o mesmo nome
-        indexNome = self.df.cd(['cd', nomeArquivo], indexPasta, False)
+        indexNome = self.df.cd(['cd', nomeArquivo], indexPasta, '-', False)
         if indexNome != False:
             return ''
         
@@ -65,7 +68,7 @@ class FileFunctions:
 
         # Cria Inode
         indexCriadoRelativo = self.utils.indexGeral2IndexInode(indexInodeCriadoGeral)
-        inode = iNode(indexCriadoRelativo, nomeArquivo, indexPasta, "usuario", '', permissoes="frwxr--", usuarioCriador="usuario")
+        inode = iNode(indexCriadoRelativo, nomeArquivo, indexPasta, self.usuario, '', permissoes="frwxr--", usuarioCriador=self.usuario)
 
         # adiciona novo arquivo como filho no pai
         self.utils.adicionaFilhoNoPaiInode(indexPasta, indexCriadoRelativo)    
@@ -91,7 +94,7 @@ class FileFunctions:
             pasta = './'
 
         # Verifica se o caminho existe
-        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
+        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral, '-')
         if not isinstance(indexPasta, str):
             return "Erro: caminho não encontrado"
         
@@ -102,6 +105,10 @@ class FileFunctions:
         inodeFilhoEcontrado = self.utils.retornaInodeEstrutura(filhoAchado)
         if inodeFilhoEcontrado.permissoes[0][0] == 'd':
             return 'Erro: arquivo é um diretório'
+        # Verifica se tem permissao de escrita
+        verifica = self.utils.verificaPermissao(self.usuario, 'w', inodeFilhoEcontrado.dono[0].replace('*', ''), inodeFilhoEcontrado.permissoes[0])
+        if not verifica:
+            return "Erro: permissão negada"
         # Remove o arquivo do pai
         self.utils.removeFilhoNoPaiInode(filhoAchado)
         
@@ -135,23 +142,42 @@ class FileFunctions:
             pasta = './'
         
         # Verifica se o arquivo ja existe
-        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
+        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral, '-')
         if not isinstance(indexPasta, str):
             return
         # achou uma pasta com o mesmo nome
-        indexArquivoGeral = self.df.cd(['cd', nome], indexAtualGeral, False)
-        if txt[-2] == '>' or not isinstance(indexArquivoGeral, str):
+        indexArquivoGeral = self.df.cd(['cd', nome], indexAtualGeral, '-',False)
+        # se não achou, verifica se tem permissoes de escrita na pasta
+        if not isinstance(indexArquivoGeral, str):
+            verifica = self.utils.verificaPermissao(self.usuario, 'w', self.utils.retornaInodeEstrutura(indexPasta).dono[0].replace('*', ''), self.utils.retornaInodeEstrutura(indexPasta).permissoes[0])
+            if not verifica:
+                print("Erro: permissão negada")
+                return
+            
+            
+        if txt[-2] == '>':
+            # Verifica se o arquivo ja existe
+            if indexArquivoGeral != False and indexArquivoGeral != True:
+                # verifica se tem permissao de escrita
+                inode = self.utils.retornaInodeEstrutura(indexArquivoGeral)
+                verifica = self.utils.verificaPermissao(self.usuario, 'w', inode.dono[0].replace('*', ''), inode.permissoes[0])
+                if not verifica:
+                    print("Erro: permissão negada")
+                    return
+
             # Sobrescreve o artigo
             rem = self.rm(['rm', nome], indexAtualGeral)
+            print(1)
             # Crindo arquivo 
-            indexArquivoGeral = self.touch(['touch', nome], indexAtualGeral)
+            indexArquivoGeral = self.touch(['touch', nome], indexAtualGeral, '-')
+            print(1)
             if indexArquivoGeral == '':
                 return
         else:
             # Adiciona conteudo ao fim arquivo
             
             # Ler o conteudo do arquivo 
-            indexArquivoGeral = self.df.cd(['cd', nome], indexAtualGeral, False)
+            indexArquivoGeral = self.df.cd(['cd', nome], indexAtualGeral, 'w', False)
             if not isinstance(indexArquivoGeral, str):
                 return
             textoAdc = self.utils.lerArquivoPerIndex(int(indexArquivoGeral))
@@ -195,13 +221,13 @@ class FileFunctions:
             pasta = './'
         
         # Verifica se o arquivo ja existe
-        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
+        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral, 'r')
         if isinstance(indexPasta, str):
         
             # achou uma pasta com o mesmo nome
-            indexArquivo = self.df.cd(['cd', nome], indexAtualGeral, False)
+            indexArquivo = self.df.cd(['cd', nome], indexAtualGeral, 'r', False)
             if not isinstance(indexArquivo, str):
-                print("Erro: arquivo não encontrado")
+                print("Erro: arquivo não encontrado",)
                 return ''
 
             # Lendo o arquivo
@@ -229,7 +255,7 @@ class FileFunctions:
             pasta = './'
         
         # Verifica se o arquivo ja existe
-        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral)
+        indexPasta = self.df.cd(['cd', pasta], indexAtualGeral, 'r')
         if not isinstance(indexPasta, str):
             print("Erro: caminho não encontrado")
             return
@@ -242,13 +268,13 @@ class FileFunctions:
         pastaDestino = '/'.join(pastaDestino)
         if len(pastaDestino) == 0:
             pastaDestino = './'
-        indexPastaFinal = self.df.cd(['cd', pastaDestino], indexAtualGeral)
+        indexPastaFinal = self.df.cd(['cd', pastaDestino], indexAtualGeral, 'w')
         if not isinstance(indexPastaFinal, str):
             print("Erro: caminho não encontrado")
             return
         
         # achou uma pasta com o mesmo nome
-        indexArquivo = self.df.cd(['cd', nomeArquivo], indexPasta, False)
+        indexArquivo = self.df.cd(['cd', nomeArquivo], indexPasta, 'r', False)
         if not isinstance(indexArquivo, str):
             print("Erro: arquivo não encontrado")
             return
@@ -274,15 +300,15 @@ class FileFunctions:
         if localizacaoFinal == '':
             localizacaoFinal = './'
 
-        indexGeralNovoInode = self.df.cd(['cd', localizacaoFinal], indexAtualGeral)
+        indexGeralNovoInode = self.df.cd(['cd', localizacaoFinal], indexAtualGeral, 'wx')
         if not isinstance(indexGeralNovoInode, str):
             return
 
-        indexGeralInodeAntigoFile = self.df.cd(['cd', localizacaoInicial], indexAtualGeral, False)
+        indexGeralInodeAntigoFile = self.df.cd(['cd', localizacaoInicial], indexAtualGeral, 'wx', False)
         if isinstance(indexGeralInodeAntigoFile, str):
             self.mvFiles(self.utils.retornaInodeEstrutura(indexGeralInodeAntigoFile), indexGeralNovoInode, ultimaPasta)
             return
-        indexGeralInodeAntigo = self.df.cd(['cd', localizacaoInicial], indexAtualGeral)
+        indexGeralInodeAntigo = self.df.cd(['cd', localizacaoInicial], indexAtualGeral, 'wx')
         if not isinstance(indexGeralInodeAntigo, str):
         
             return
@@ -293,7 +319,7 @@ class FileFunctions:
 
         # Se ultima localizacao for um diretorio existente, mover o arquivo para dentro dele
         if existeUltimaLocalizacao != '':
-            indexGeralNovoInode = self.df.cd(['cd', ultimaPasta], indexGeralNovoInode)
+            indexGeralNovoInode = self.df.cd(['cd', ultimaPasta], indexGeralNovoInode, 'wx')
             if not isinstance(indexGeralNovoInode, str):
                 return
         else:

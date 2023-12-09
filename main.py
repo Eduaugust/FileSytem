@@ -1,8 +1,8 @@
-# [] - Ao criar o sistema, criar uma HOME
-# [] - Criar um novo usuario (com senha e estar armazenado em um arquivo sem ser 
+# [X] - Ao criar o sistema, criar uma HOME
+# [X] - Criar um novo usuario (com senha e estar armazenado em um arquivo sem ser 
 # texto plano - hash - usuários normais não podem ver o arquivo de usuários)
-# [] - Login no novo usuário
-# [] - Cada arquivo tem um dono e permissões de leitura e escrita
+# [X] - Login no novo usuário
+# [X] - Cada arquivo tem um dono e permissões de leitura e escrita
 # [] - Chmod (para trocar as permissões dos arquivos/diretórios) 
 # [] - Chown (para trocar o dono de um arquivo/diretório) 
 
@@ -37,36 +37,40 @@ def checkSeSistemaExiste() -> bool:
         arquivo.close()
         return False
     
-
-
 if __name__ == "__main__":
     r = checkSeSistemaExiste()
     arquivo = open(FILE, 'r+')
     utils = Utils(arquivo)
     raiz = utils.indexInode2IndexGeral('0')
-    df = DirFunctions(arquivo)
-    ff = FileFunctions(arquivo)
+    df = DirFunctions(arquivo, 'init')
+    ff = FileFunctions(arquivo, 'init')
     if not r:
         utils.limparSistema()
-        
-        df = DirFunctions(arquivo)
         # Cria home
-        df.mkdir('mkdir home'.split(), raiz)
-    raiz = df.cd('cd home'.split(), raiz)
+        df.mkdir('mkdir home'.split(), raiz, 'init')
     
-    seg = Seguranca(arquivo, utils, df, ff, df.ls(raiz))
+    raiz = df.cd('cd home'.split(), raiz, 'x')
+    if not isinstance(raiz, str):
+        print("Erro: diretório não encontrado")
+        exit()
+    
+    seg = Seguranca(arquivo, utils, df, ff, raiz)
     # Create User or Login
-    seg.createOrLogin()
+    usuario = seg.createOrLogin()
 
-    indexAtualGeral = raiz
+    
+    txt = 'cd ' + usuario
+    indexAtualGeral = df.cd(txt.split(), raiz, 'x')
+    if not isinstance(indexAtualGeral, str):
+        print("Erro: diretório não encontrado")
+        exit()
     command = ''
     while True:
         utils = Utils(arquivo)
-        df = DirFunctions(arquivo)
-        ff = FileFunctions(arquivo)
+        df = DirFunctions(arquivo, usuario)
+        ff = FileFunctions(arquivo, usuario)
         dir = df.pwd(indexAtualGeral)
         txt = input(dir + ' > ')
-        # if txt has any "*" symbol, print error
         txt = txt.split()
         command = txt[0]
         if command == 'exit':
@@ -74,13 +78,13 @@ if __name__ == "__main__":
         elif command == 'clearALL':
             utils.limparSistema()
         elif command == 'mkdir':
-            df.mkdir(txt, indexAtualGeral)
+            df.mkdir(txt, indexAtualGeral, usuario)
         elif command == 'rmdir':
             df.rmdir(txt, indexAtualGeral)
         elif command == 'ls':
             df.ls(indexAtualGeral)
         elif command == 'cd':
-            check = df.cd(txt, indexAtualGeral)
+            check = df.cd(txt, indexAtualGeral, 'x')
             if not isinstance(check, str):
                 print("Erro: diretório não encontrado")
                 continue
@@ -105,6 +109,10 @@ if __name__ == "__main__":
                 print(resposta)
         elif command == 'cp':
             ff.cp(txt, indexAtualGeral)
+        elif command == 'chmod':
+            df.chmod(txt, indexAtualGeral)
+        elif command == 'chown':
+            df.chown(txt, indexAtualGeral)
         elif command == 'clear':
             os.system('cls' if os.name == 'nt' else 'echo -e \\\\033c')
     arquivo.close()

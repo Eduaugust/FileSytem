@@ -22,7 +22,7 @@ class iNode:
     # Permissões de acesso (dono e outros usuários - leitura, escrita, execução)
     # Apontadores para blocos
     # Apontador para eventual outro i-node
-    def __init__(self, posicao: str, nomeArquivoDiretorio: str, criador: str, dono: str, tamanho: str, usuarioCriador: str, dataCriacao: str = str(datetime.datetime.now()), dataModificacao: str = str(datetime.datetime.now()), permissoes: str = "drwxr--", apontadoresParaBlocos: str = '', apontadoresOutrosInodes: str = '') -> None:
+    def __init__(self, posicao: str, nomeArquivoDiretorio: str, criador: str, dono: str, tamanho: str, usuarioCriador: str, dataCriacao: str = str(datetime.datetime.now()), dataModificacao: str = str(datetime.datetime.now()), permissoes: str = "drwxr-x", apontadoresParaBlocos: str = '', apontadoresOutrosInodes: str = '') -> None:
         self.posicao = posicao, # posicao relativa
         self.nomeArquivoDiretorio = nomeArquivoDiretorio, # 64 caracteres
         self.criador = criador, # 6 caracteres -> index geral
@@ -57,8 +57,14 @@ class iNode:
     def setCriador(self, newCriador: str) -> None:
         self.criador =  tuple([newCriador])
     
+    def setDono(self, newDono: str) -> None:
+        self.dono = tuple([newDono])
+    
     def setBloco(self, newBloco: str) -> None:
         self.apontadoresParaBlocos = tuple([newBloco])
     
     def setDataModificacao(self) -> None:
         self.dataModificacao = tuple([str(datetime.datetime.now())])
+
+    def setPermissao(self, newPermisse: str) -> None:
+        self.permissoes = tuple([newPermisse])

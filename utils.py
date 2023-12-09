@@ -347,7 +347,23 @@ class Utils:
         texto = bloco.ljust(ESPACO4KB, '*')
         self.escreverArquivoPerIndex(texto, int(self.indexBloco2IndexGeral(str(index))))
         return True
-
+    
+    def verificaPermissao(self, usuario: str, permissao: str, dono: str, permissoes: str) -> bool:
+        usuario = usuario.replace('*', '')
+        dono = dono.replace('*', '')
+        if usuario == 'init' or permissao == '-':
+            return True
+        # Verifica permissão
+        dicionarioPermissoes = {'r': 1, 'w': 2, 'x': 3}
+        for p in permissao:
+            if p == 'd' and usuario == dono:
+                return True
+            permissaoInt = dicionarioPermissoes[p]
+            if usuario != dono and permissoes[permissaoInt + 3] == '-':
+                return False
+            if usuario == dono and permissoes[permissaoInt] == '-':
+                return False
+        return True
 
 
     def limparSistema(self) -> None:
@@ -361,7 +377,7 @@ class Utils:
         indexGeral = self.procuraVaga(True)
         
         # Cria inode raiz
-        inode = iNode(self.indexGeral2IndexInode(indexGeral), "root", self.indexInode2IndexGeral('1'), "root", '0', usuarioCriador="root")
+        inode = iNode(self.indexGeral2IndexInode(indexGeral), "root", self.indexInode2IndexGeral('1'), "init", '0', usuarioCriador="init")
 
         text = str(inode)
 
