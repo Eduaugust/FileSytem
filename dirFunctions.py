@@ -44,7 +44,7 @@ class DirFunctions:
         nome = nome.split('/')
         nomeNovoInode = nome.pop(-1)
         if len(nome) == 0:
-            novoLugarGeral = indexAtualGeral
+            novoLugarGeral = self.cd(['cd', './'], indexAtualGeral, 'w')
         else:
             novoLugarGeral = self.cd(['cd', '/'.join(nome)], indexAtualGeral, 'w')
         # check if is not a str instance
@@ -259,8 +259,6 @@ class DirFunctions:
 
         # Insere inode modificado
         self.utils.inserirInodeEmPosicaoValida(int(indexEspecifico), str(inode))
-
-        print("Permissão alterada com sucesso", novaPermissao)
 
         return True
 
